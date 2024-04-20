@@ -1,6 +1,18 @@
 # cmake project file by Prakash Punnoor
 # improved by Ryan Pavlik
+
+option(HUNTER_ENABLED "Enable Hunter package manager" OFF)
+
+if(HUNTER_ENABLED)
+cmake_minimum_required(VERSION 3.2)
+include(cmake/HunterGate.cmake)
+HunterGate(
+    URL "https://github.com/cpp-pm/hunter/archive/v0.25.5.tar.gz"
+    SHA1 "a20151e4c0740ee7d0f9994476856d813cdead29"
+)
+else()
 cmake_minimum_required(VERSION 2.6)
+endif()
 
 project(Alut C)
 
@@ -42,8 +54,14 @@ option(BUILD_USE_WERROR "enable fail on all warning" OFF)
 ###
 # Dependencies
 ###
+if(HUNTER_ENABLED)
+hunter_add_package(OpenAL)
+find_package(OpenAL CONFIG REQUIRED)
+set(OPENAL_LIBRARY OpenAL::OpenAL)
+else()
 find_package(OpenAL REQUIRED)
 include_directories(${OPENAL_INCLUDE_DIR})
+endif()
 
 ###
 # Checking for types
@@ -173,11 +191,42 @@ endif()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake_in" "${CMAKE_CURRENT_BINARY_DIR}/config.h")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
+include(CMakePackageConfigHelpers)
+
+set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(version_config "${generated_dir}/${PROJECT_NAME}ConfigVersion.cmake")
+set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
+set(targets_export_name "${PROJECT_NAME}Targets")
+set(namespace "${PROJECT_NAME}::")
+
 ###
 # Build the library
 ###
 add_subdirectory(src)
 
+write_basic_package_version_file(
+    "${version_config}" VERSION "${PACKAGE_VERSION}" COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    "cmake/template/Config.cmake.in"
+    "${project_config}"
+    INSTALL_DESTINATION "${config_install_dir}"
+)
+
+install(
+    FILES "${project_config}" "${version_config}"
+    DESTINATION "${config_install_dir}"
+)
+
+install(
+    EXPORT "${targets_export_name}"
+    NAMESPACE "${namespace}"
+    DESTINATION "${config_install_dir}"
+)
+
+if(NOT HUNTER_ENABLED)
 ###
 # Make the pkg-config and config files
 ###
@@ -199,6 +248,7 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/admin/pkgconfig/freealut-config
 	DESTINATION bin)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/admin/pkgconfig/freealut.pc
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endif()
 
 ###
 # Examples
