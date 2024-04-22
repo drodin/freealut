@@ -51,6 +51,9 @@ set_target_properties(alut
 	${MAJOR_VERSION}
 	SOVERSION
 	${MAJOR_VERSION})
+if(NOT BUILD_SHARED_LIBS)
+	target_compile_definitions(alut PUBLIC LIBALUT_STATIC)
+endif()
 target_link_libraries(alut ${OPENAL_LIBRARY})
 if(UNIX)
 	target_link_libraries(alut m)
